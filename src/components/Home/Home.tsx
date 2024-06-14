@@ -88,6 +88,7 @@ const Home: React.FC = () => {
     if (meetingSession) {
       console.log('Meeting session started', meetingSession);
 
+      let localTileId: any = null;
 
       const observer = {
         audioVideoDidStart: () => {
@@ -129,9 +130,15 @@ const Home: React.FC = () => {
           }
 
           meetingSession.audioVideo.bindVideoElement(tileState.tileId, tileElement);
+          localTileId = tileState.tileId;
           console.log(`Bound video tile ${tileState.tileId} to attendee ${tileState.boundAttendeeId}`);
 
-        },
+        },videoTileWasRemoved: (tileId: any) => {
+          if (localTileId === tileId) {
+            console.log(`You called removeLocalVideoTile. videoElement can be bound to another tile.`);
+            localTileId = null;
+          }
+  }
       };
 
       meetingSession.audioVideo.addObserver(observer);
@@ -205,14 +212,18 @@ const copyMeetingId = () => {
     }
 };
 
-const toggleVideo = () => {
+const toggleVideo = async() => {
     if (meetingSession) {
         if (isVideoEnabled) {
-            meetingSession.audioVideo.stopLocalVideoTile();
+          await meetingSession.audioVideo.stopVideoInput();
+            // meetingSession.audioVideo.stopLocalVideoTile();
+            
+            // meetingSession.audioVideo.removeLocalVideoTile();
             setIsVideoEnabled(false);
         } else {
-            meetingSession.audioVideo.removeLocalVideoTile();
-            meetingSession.audioVideo.startLocalVideoTile();
+          const videoInputDevices = await meetingSession.audioVideo.listVideoInputDevices();
+          await meetingSession.audioVideo.startVideoInput(videoInputDevices[0].deviceId);
+          meetingSession.audioVideo.startLocalVideoTile();
             setIsVideoEnabled(true);
         }
     }
