@@ -20,6 +20,8 @@ const Home: React.FC = () => {
   const [joinId, setJoinId] = useState<string>('');
 
   const [meetType, setMeetType] = useState<MeetType>();
+  const [localTileId, setLocalTileId] = useState<number | null>(null);
+
 
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isVideoEnabled, setIsVideoEnabled] = useState<boolean>(true);
@@ -50,8 +52,6 @@ const Home: React.FC = () => {
 }
       const attendeeData = await attendeeResponse.json();
 
-      console.log("meetingResponse-----------------",meetingResponse)
-      console.log("attendeeResponse-----------------", attendeeData)
 
       const logger = new ConsoleLogger('ChimeLogger', LogLevel.INFO);
       const deviceController = new DefaultDeviceController(logger);
@@ -92,53 +92,60 @@ const Home: React.FC = () => {
 
       const observer = {
         audioVideoDidStart: () => {
-          console.log('Audio and video started');
+          console.log('Audio and video started----------------------');
           const tiles = meetingSession.audioVideo.getAllVideoTiles();
           console.log("tiles------------------", tiles);
-
         },
         audioVideoDidStartConnecting: (reconnecting: any) => {
           if (reconnecting) {
-            // e.g. the WiFi connection is dropped.
-            console.log('Attempting to reconnect');
+            console.log('Attempting to reconnect--------------------');
           }
         },
         videoTileDidUpdate: (tileState: any) => {
           console.log('Video tile updated', tileState);
-          if (!tileState.boundAttendeeId) {
+          if (!tileState.boundAttendeeId || !tileState.localTile ) {
             return;
           }
 
-          let tileElement = document.getElementById(`video-${tileState.tileId}`) as HTMLVideoElement;
-          if (!tileElement) {
-            tileElement = document.createElement('video');
-            tileElement.id = `video-${tileState.tileId}`;
-            tileElement.style.width = '600px';
-            tileElement.style.height = '400px';
-            tileElement.style.backgroundColor = 'black';
-            tileElement.autoplay = true;
-            tileElement.muted = false;
+          let videoElement = document.getElementById(`video-${tileState.tileId}`) as HTMLVideoElement;
+          if (!videoElement) {
+            const newVideoElement  = document.createElement('video');
+            newVideoElement.id = `video-${tileState.tileId}`;
+            newVideoElement.style.width = '600px';
+            newVideoElement.style.height = '400px';
+            newVideoElement.style.backgroundColor = 'black';
+            newVideoElement.autoplay = true;
+            newVideoElement.muted = false;
 
             const videoTilesContainer = document.getElementById('video-tiles');
             if (videoTilesContainer) {
-              videoTilesContainer.appendChild(tileElement);
+              videoTilesContainer.appendChild(newVideoElement);
               console.log(`Added video tile for attendee ${tileState.boundAttendeeId}`);
+              meetingSession.audioVideo.bindVideoElement(tileState.tileId, newVideoElement);
+
             } else {
               console.error('Video tiles container not found');
               return;
             }
+          }else {
+            meetingSession.audioVideo.bindVideoElement(tileState.tileId, videoElement);
           }
 
-          meetingSession.audioVideo.bindVideoElement(tileState.tileId, tileElement);
-          localTileId = tileState.tileId;
+          setLocalTileId(tileState.tileId);
+
           console.log(`Bound video tile ${tileState.tileId} to attendee ${tileState.boundAttendeeId}`);
 
         },videoTileWasRemoved: (tileId: any) => {
-          if (localTileId === tileId) {
-            console.log(`You called removeLocalVideoTile. videoElement can be bound to another tile.`);
-            localTileId = null;
-          }
-  }
+          const tileElement = document.getElementById(`video-${tileId}`);
+
+            if (tileElement) {
+              tileElement.remove();
+              console.log(`Removed video tile ${tileId}`);
+            }
+            if (localTileId === tileId) {
+              setLocalTileId(null);
+            }
+        }
       };
 
       meetingSession.audioVideo.addObserver(observer);
@@ -215,11 +222,19 @@ const copyMeetingId = () => {
 const toggleVideo = async() => {
     if (meetingSession) {
         if (isVideoEnabled) {
-          await meetingSession.audioVideo.stopVideoInput();
+          if (localTileId !== null) {
+            meetingSession.audioVideo.stopLocalVideoTile();
+            await meetingSession.audioVideo.stopVideoInput();
+            meetingSession.audioVideo.removeLocalVideoTile();
+
+            setLocalTileId(null);
+            setIsVideoEnabled(false);
+          }
+         
             // meetingSession.audioVideo.stopLocalVideoTile();
             
             // meetingSession.audioVideo.removeLocalVideoTile();
-            setIsVideoEnabled(false);
+           
         } else {
           const videoInputDevices = await meetingSession.audioVideo.listVideoInputDevices();
           await meetingSession.audioVideo.startVideoInput(videoInputDevices[0].deviceId);
