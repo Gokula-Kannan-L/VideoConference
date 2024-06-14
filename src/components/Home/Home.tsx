@@ -211,6 +211,7 @@ const toggleVideo = () => {
             meetingSession.audioVideo.stopLocalVideoTile();
             setIsVideoEnabled(false);
         } else {
+            meetingSession.audioVideo.removeLocalVideoTile();
             meetingSession.audioVideo.startLocalVideoTile();
             setIsVideoEnabled(true);
         }
