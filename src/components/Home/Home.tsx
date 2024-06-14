@@ -68,6 +68,13 @@ const Home: React.FC = () => {
       const audioOutputDevices = await meetingSession.audioVideo.listAudioOutputDevices();
       await meetingSession.audioVideo.chooseAudioOutput(audioOutputDevices[0].deviceId);
 
+       // Create and bind audio element
+       const audioElement = document.createElement('audio');
+       audioElement.id = 'audio-element';
+       audioElement.autoplay = true;
+       document.body.appendChild(audioElement);
+       meetingSession.audioVideo.bindAudioElement(audioElement);
+
       meetingSession.audioVideo.start();
       setMeetingSession(meetingSession);
 
@@ -109,7 +116,7 @@ const Home: React.FC = () => {
             tileElement.style.height = '400px';
             tileElement.style.backgroundColor = 'black';
             tileElement.autoplay = true;
-            // tileElement.muted = true;
+            tileElement.muted = false;
 
             const videoTilesContainer = document.getElementById('video-tiles');
             if (videoTilesContainer) {
@@ -174,6 +181,12 @@ const copyMeetingId = () => {
       const audioOutputDevices = await meetingSession.audioVideo.listAudioOutputDevices();
       await meetingSession.audioVideo.chooseAudioOutput(audioOutputDevices[0].deviceId);
 
+       const audioElement = document.createElement('audio');
+      audioElement.id = 'audio-element';
+      audioElement.autoplay = true;
+      document.body.appendChild(audioElement);
+      meetingSession.audioVideo.bindAudioElement(audioElement);
+
       meetingSession.audioVideo.start();
       setMeetingSession(meetingSession);
 
@@ -231,11 +244,7 @@ useEffect( () => {
            <div id="video-tiles" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
             {/* Video tiles will be appended here */}
           </div>
-
-        </>
-      }
-      
-      <div className="controls-div">
+          <div className="controls-div">
         <button onClick={toggleMute}>{isMuted ? 'Unmute' : 'Mute'}</button>
         <button onClick={toggleVideo}>{isVideoEnabled ? 'Stop Video' : 'Start Video'}</button>
 
@@ -243,6 +252,11 @@ useEffect( () => {
         <div className="copy-meeting">
           <button onClick={copyMeetingId}>Copy Meeting ID</button>
         </div>  
+        
+        </>
+      }
+      
+      
     </div>
   );
 };
