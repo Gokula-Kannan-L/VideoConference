@@ -1,0 +1,35 @@
+.home-container{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    .create-meeting{
+        padding: 20px;
+        .create-btn{
+            width: 14rem;
+            height: 3rem;
+            font-size: 18px;
+        }
+    }
+    .join-meeting{
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        .meeting-input{
+            width: 14rem;
+            height: 2.5rem;
+            font-size: 14px;
+            margin-bottom: 10px;
+            padding: 5px;
+        }
+        .join-btn{
+            width: 14rem;
+            height: 3rem;
+            font-size: 18px;
+        }
+    }
+    .controls-div{
+        padding: 20px;
+    }
+}
