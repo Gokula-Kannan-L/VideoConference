@@ -7,27 +7,21 @@ import {
   LogLevel,
   MeetingSessionConfiguration,
 } from 'amazon-chime-sdk-js';
-import './Home.scss'
+import './Home.scss';
 
-enum MeetType{
+enum MeetType {
   CREATE = 'create',
-  JOIN = 'join'
+  JOIN = 'join',
 }
 
 const Home: React.FC = () => {
   const [meetingSession, setMeetingSession] = useState<DefaultMeetingSession | null>(null);
   const [meetingId, setMeetingId] = useState<string>('');
   const [joinId, setJoinId] = useState<string>('');
-
   const [meetType, setMeetType] = useState<MeetType>();
   const [localTileId, setLocalTileId] = useState<number | null>(null);
-  const videoElement = useRef(null);
-
-
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isVideoEnabled, setIsVideoEnabled] = useState<boolean>(true);
-
-
 
   const createMeeting = async () => {
     try {
@@ -47,14 +41,10 @@ const Home: React.FC = () => {
         }),
       });
 
-
       if (!attendeeResponse.ok) {
         throw new Error('Failed to create attendee');
-}
+      }
       const attendeeData = await attendeeResponse.json();
-
-      console.log("meetingResponse-----------------",meetingResponse)
-      console.log("attendeeResponse-----------------", attendeeData)
 
       const logger = new ConsoleLogger('ChimeLogger', LogLevel.INFO);
       const deviceController = new DefaultDeviceController(logger);
@@ -71,16 +61,15 @@ const Home: React.FC = () => {
       const audioOutputDevices = await meetingSession.audioVideo.listAudioOutputDevices();
       await meetingSession.audioVideo.chooseAudioOutput(audioOutputDevices[0].deviceId);
 
-       // Create and bind audio element
-       const audioElement = document.createElement('audio');
-       audioElement.id = 'audio-element';
-       audioElement.autoplay = true;
-       document.body.appendChild(audioElement);
-       meetingSession.audioVideo.bindAudioElement(audioElement);
+      // Create and bind audio element
+      const audioElement = document.createElement('audio');
+      audioElement.id = 'audio-element';
+      audioElement.autoplay = true;
+      document.body.appendChild(audioElement);
+      meetingSession.audioVideo.bindAudioElement(audioElement);
 
       meetingSession.audioVideo.start();
       setMeetingSession(meetingSession);
-
     } catch (error) {
       console.error('Failed to join meeting:', error);
       alert('An error occurred while joining the meeting. Please try again.');
@@ -91,19 +80,14 @@ const Home: React.FC = () => {
     if (meetingSession) {
       console.log('Meeting session started', meetingSession);
 
-      let localTileId: any = null;
-
       const observer = {
         audioVideoDidStart: () => {
-          console.log('Audio and video started----------------------');
-          const tiles = meetingSession.audioVideo.getAllVideoTiles();
-          console.log("tiles------------------", tiles);
+          console.log('Audio and video started');
           meetingSession.audioVideo.startLocalVideoTile();
-
         },
-        audioVideoDidStartConnecting: (reconnecting: any) => {
+        audioVideoDidStartConnecting: (reconnecting: boolean) => {
           if (reconnecting) {
-            console.log('Attempting to reconnect--------------------');
+            console.log('Attempting to reconnect');
           }
         },
         videoTileDidUpdate: (tileState: any) => {
@@ -112,49 +96,47 @@ const Home: React.FC = () => {
             return;
           }
 
-          // let tileElement = document.getElementById(`video-${tileState.tileId}`) as HTMLVideoElement;
-          // if (!tileElement) {
-          //   tileElement = document.createElement('video');
-          //   tileElement.id = `video-${tileState.tileId}`;
-          //   tileElement.style.width = '600px';
-          //   tileElement.style.height = '400px';
-          //   tileElement.style.backgroundColor = 'black';
-          //   tileElement.autoplay = true;
-          //   tileElement.muted = false;
+          let tileElement = document.getElementById(`video-${tileState.tileId}`) as HTMLVideoElement;
+          if (!tileElement) {
+            tileElement = document.createElement('video');
+            tileElement.id = `video-${tileState.tileId}`;
+            tileElement.style.width = '600px';
+            tileElement.style.height = '400px';
+            tileElement.style.backgroundColor = 'black';
+            tileElement.autoplay = true;
+            tileElement.muted = false;
 
-          //   const videoTilesContainer = document.getElementById('video-tiles');
-          //   if (videoTilesContainer) {
-          //     videoTilesContainer.appendChild(tileElement);
-          //     console.log(`Added video tile for attendee ${tileState.boundAttendeeId}`);
-          //   } else {
-          //     console.error('Video tiles container not found');
-          //     return;
-          //   }
-          // }
-          if(videoElement.current)
-            meetingSession.audioVideo.bindVideoElement(tileState.tileId, videoElement.current);
+            const videoTilesContainer = document.getElementById('video-tiles');
+            if (videoTilesContainer) {
+              videoTilesContainer.appendChild(tileElement);
+              console.log(`Added video tile for attendee ${tileState.boundAttendeeId}`);
+            } else {
+              console.error('Video tiles container not found');
+              return;
+            }
+          }
+
+          meetingSession.audioVideo.bindVideoElement(tileState.tileId, tileElement);
 
           if (tileState.localTile) {
             setLocalTileId(tileState.tileId);
           }
 
           console.log(`Bound video tile ${tileState.tileId} to attendee ${tileState.boundAttendeeId}`);
-
-        }
+        },
       };
 
       meetingSession.audioVideo.addObserver(observer);
-
     }
   }, [meetingSession]);
-const copyMeetingId = () => {
+
+  const copyMeetingId = () => {
     navigator.clipboard.writeText(meetingId);
     alert('Meeting ID copied to clipboard');
   };
 
-
-  const joinMeeting = async() => {
-    if(joinId){
+  const joinMeeting = async () => {
+    if (joinId) {
       const attendeeResponse = await fetch('https://ziinfncfqo52tguw3ewlhsrl7i0vvvny.lambda-url.us-east-1.on.aws/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -164,13 +146,12 @@ const copyMeetingId = () => {
         }),
       });
       const attendee = await attendeeResponse.json();
-      console.log("New attendee-----------------------",attendee)
+      console.log('New attendee', attendee);
 
       const logger = new ConsoleLogger('ChimeLogger', LogLevel.INFO);
       const deviceController = new DefaultDeviceController(logger);
 
       const configuration = new MeetingSessionConfiguration(attendee.meeting, attendee.attendeeResponse);
-
       const meetingSession = new DefaultMeetingSession(configuration, logger, deviceController);
 
       const audioInputDevices = await meetingSession.audioVideo.listAudioInputDevices();
@@ -182,7 +163,7 @@ const copyMeetingId = () => {
       const audioOutputDevices = await meetingSession.audioVideo.listAudioOutputDevices();
       await meetingSession.audioVideo.chooseAudioOutput(audioOutputDevices[0].deviceId);
 
-       const audioElement = document.createElement('audio');
+      const audioElement = document.createElement('audio');
       audioElement.id = 'audio-element';
       audioElement.autoplay = true;
       document.body.appendChild(audioElement);
@@ -190,85 +171,75 @@ const copyMeetingId = () => {
 
       meetingSession.audioVideo.start();
       setMeetingSession(meetingSession);
-
     }
-  }
+  };
 
   const toggleMute = () => {
     if (meetingSession) {
-        if (isMuted) {
-            meetingSession.audioVideo.realtimeUnmuteLocalAudio();
-            setIsMuted(false);
-        } else {
-            meetingSession.audioVideo.realtimeMuteLocalAudio();
-            setIsMuted(true);
-        }
+      if (isMuted) {
+        meetingSession.audioVideo.realtimeUnmuteLocalAudio();
+        setIsMuted(false);
+      } else {
+        meetingSession.audioVideo.realtimeMuteLocalAudio();
+        setIsMuted(true);
+      }
     }
-};
+  };
 
-const toggleVideo = async() => {
+  const toggleVideo = async () => {
     if (meetingSession) {
-        if (isVideoEnabled) {
-          if (localTileId !== null) {
-            await meetingSession.audioVideo.stopVideoInput();
-            // meetingSession.audioVideo.stopLocalVideoTile();
-            // meetingSession.audioVideo.removeLocalVideoTile();
-          }
-         
-            // meetingSession.audioVideo.stopLocalVideoTile();
-            
-            // meetingSession.audioVideo.removeLocalVideoTile();
-            setIsVideoEnabled(false);
-        } else {
-          const videoInputDevices = await meetingSession.audioVideo.listVideoInputDevices();
-          await meetingSession.audioVideo.startVideoInput(videoInputDevices[0].deviceId);
-          meetingSession.audioVideo.startLocalVideoTile();
-            setIsVideoEnabled(true);
+      if (isVideoEnabled) {
+        if (localTileId !== null) {
+          await meetingSession.audioVideo.stopVideoInput();
         }
+        setIsVideoEnabled(false);
+      } else {
+        const videoInputDevices = await meetingSession.audioVideo.listVideoInputDevices();
+        await meetingSession.audioVideo.startVideoInput(videoInputDevices[0].deviceId);
+        meetingSession.audioVideo.startLocalVideoTile();
+        setIsVideoEnabled(true);
+      }
     }
-};
+  };
 
-useEffect( () => {
-  if(meetingSession){
-    setMeetType(MeetType.CREATE);
-  }
-}, [meetingSession])
+  useEffect(() => {
+    if (meetingSession) {
+      setMeetType(MeetType.CREATE);
+    }
+  }, [meetingSession]);
 
   return (
     <div className='home-container'>
-      {
-        !meetType &&
+      {!meetType && (
         <>
-        <div className='create-meeting'>
-          <button onClick={createMeeting} className='create-btn'>Create Meeting</button>
-        </div>
-        <div>OR</div>
-        <div className='join-meeting'>
-          <input value={joinId} onChange={ (e) => setJoinId(e.target.value)} className='meeting-input' placeholder='Enter meeting id'/>
-          <button onClick={joinMeeting} className='join-btn'>Join Meeting</button>
-        </div>
+          <div className='create-meeting'>
+            <button onClick={createMeeting} className='create-btn'>
+              Create Meeting
+            </button>
+          </div>
+          <div>OR</div>
+          <div className='join-meeting'>
+            <input value={joinId} onChange={(e) => setJoinId(e.target.value)} className='meeting-input' placeholder='Enter meeting id' />
+            <button onClick={joinMeeting} className='join-btn'>
+              Join Meeting
+            </button>
+          </div>
         </>
-      }
-      {
-        MeetType.CREATE === meetType && 
+      )}
+      {MeetType.CREATE === meetType && (
         <>
-         <video ref={videoElement} style={{height: '400px', width: '600px', backgroundColor:'black'}}></video>
-           <div id="video-tiles" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+          <div id='video-tiles' style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
             {/* Video tiles will be appended here */}
           </div>
-          <div className="controls-div">
-        <button onClick={toggleMute}>{isMuted ? 'Unmute' : 'Mute'}</button>
-        <button onClick={toggleVideo}>{isVideoEnabled ? 'Stop Video' : 'Start Video'}</button>
-
-        </div>
-        <div className="copy-meeting">
-          <button onClick={copyMeetingId}>Copy Meeting ID</button>
-        </div>  
-        
+          <div className='controls-div'>
+            <button onClick={toggleMute}>{isMuted ? 'Unmute' : 'Mute'}</button>
+            <button onClick={toggleVideo}>{isVideoEnabled ? 'Stop Video' : 'Start Video'}</button>
+          </div>
+          <div className='copy-meeting'>
+            <button onClick={copyMeetingId}>Copy Meeting ID</button>
+          </div>
         </>
-      }
-      
-      
+      )}
     </div>
   );
 };
