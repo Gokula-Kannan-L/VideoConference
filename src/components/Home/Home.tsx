@@ -118,9 +118,13 @@ const Home: React.FC = () => {
               return;
             }
           }
-
-          meetingSession.audioVideo.bindVideoElement(tileState.tileId, tileElement);
-
+          if(localTileId){
+            meetingSession.audioVideo.bindVideoElement(localTileId, tileElement);
+          }else{
+            meetingSession.audioVideo.bindVideoElement(tileState.tileId, tileElement);
+          }
+          
+          console.log("localTileId---------------------------------------------", tileState.localTile)
           if (tileState.localTile) {
             setLocalTileId(tileState.tileId);
           }
