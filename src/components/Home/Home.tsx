@@ -320,10 +320,10 @@ const toggleVideo = async() => {
 };
 
 useEffect( () => {
-  if(meetingSession){
+  if(meetingSession || meetingSession2){
     setMeetType(MeetType.CREATE);
   }
-}, [meetingSession])
+}, [meetingSession, meetingSession2])
 
   return (
     <div className='home-container'>
