@@ -128,9 +128,15 @@ const Home: React.FC = () => {
         },
         videoTileWasRemoved: (tileId: number) => {
           console.log('Video tile removed', tileId);
-          const tileElement = document.getElementById(`video-${tileId}`);
+          // Keep the tile but make it black instead of removing
+          const tileElement = document.getElementById(`video-${tileId}`) as HTMLVideoElement;
           if (tileElement) {
-            tileElement.remove();
+            tileElement.style.backgroundColor = 'black';
+            const stream = tileElement.srcObject;
+            if (stream) {
+              (stream as MediaStream).getTracks().forEach(track => track.stop());
+              tileElement.srcObject = null;
+            }
           }
         },
       };
