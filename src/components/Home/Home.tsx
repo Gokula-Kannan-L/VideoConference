@@ -210,10 +210,13 @@ const Home: React.FC = () => {
   const toggleVideo = async () => {
     if (meetingSession) {
       if (isVideoEnabled) {
-        await meetingSession.audioVideo.stopLocalVideoTile();
+        meetingSession.audioVideo.stopLocalVideoTile();
+        await meetingSession.audioVideo.stopVideoInput();
         setIsVideoEnabled(false);
       } else {
-        await meetingSession.audioVideo.startLocalVideoTile();
+        const videoInputDevices = await meetingSession.audioVideo.listVideoInputDevices();
+        await meetingSession.audioVideo.startVideoInput(videoInputDevices[0].deviceId);
+        meetingSession.audioVideo.startLocalVideoTile();
         setIsVideoEnabled(true);
       }
     }
