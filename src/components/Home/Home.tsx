@@ -22,7 +22,7 @@ const Home: React.FC = () => {
   const [localTileId, setLocalTileId] = useState<number | null>(null);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isVideoEnabled, setIsVideoEnabled] = useState<boolean>(true);
-  const videoTilesMap = useRef<Map<string, HTMLVideoElement>>(new Map());
+  const videoTilesMap = useRef<Map<number, HTMLVideoElement>>(new Map());
 
   const createMeeting = async () => {
     try {
@@ -97,7 +97,7 @@ const Home: React.FC = () => {
             return;
           }
 
-          let tileElement = videoTilesMap.current.get(tileState.boundAttendeeId);
+          let tileElement = videoTilesMap.current.get(tileState.tileId);
           if (!tileElement) {
             tileElement = document.createElement('video');
             tileElement.id = `video-${tileState.tileId}`;
@@ -110,7 +110,7 @@ const Home: React.FC = () => {
             const videoTilesContainer = document.getElementById('video-tiles');
             if (videoTilesContainer) {
               videoTilesContainer.appendChild(tileElement);
-              videoTilesMap.current.set(tileState.boundAttendeeId, tileElement);
+              videoTilesMap.current.set(tileState.tileId, tileElement);
               console.log(`Added video tile for attendee ${tileState.boundAttendeeId}`);
             } else {
               console.error('Video tiles container not found');
@@ -129,12 +129,12 @@ const Home: React.FC = () => {
         videoTileWasRemoved: (tileId: number) => {
           console.log('Video tile removed', tileId);
           // Keep the tile but make it black instead of removing
-          const tileElement = document.getElementById(`video-${tileId}`) as HTMLVideoElement;
+          const tileElement = videoTilesMap.current.get(tileId);
           if (tileElement) {
             tileElement.style.backgroundColor = 'black';
-            const stream = tileElement.srcObject;
+            const stream = tileElement.srcObject as MediaStream;
             if (stream) {
-              (stream as MediaStream).getTracks().forEach(track => track.stop());
+              stream.getTracks().forEach(track => track.stop());
               tileElement.srcObject = null;
             }
           }
@@ -205,9 +205,18 @@ const Home: React.FC = () => {
     if (meetingSession) {
       if (isVideoEnabled) {
         if (localTileId !== null) {
+          const tileElement = videoTilesMap.current.get(localTileId);
+          if (tileElement) {
+            tileElement.style.backgroundColor = 'black';
+            const stream = tileElement.srcObject as MediaStream;
+            if (stream) {
+              stream.getTracks().forEach(track => track.stop());
+              tileElement.srcObject = null;
+            }
+          }
           await meetingSession.audioVideo.stopVideoInput();
+          setIsVideoEnabled(false);
         }
-        setIsVideoEnabled(false);
       } else {
         const videoInputDevices = await meetingSession.audioVideo.listVideoInputDevices();
         await meetingSession.audioVideo.startVideoInput(videoInputDevices[0].deviceId);
@@ -222,7 +231,6 @@ const Home: React.FC = () => {
       setMeetType(MeetType.CREATE);
     }
   }, [meetingSession]);
-
   return (
     <div className='home-container'>
       {!meetType && (
