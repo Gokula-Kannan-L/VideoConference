@@ -22,6 +22,7 @@ const Home: React.FC = () => {
   const [localTileId, setLocalTileId] = useState<number | null>(null);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isVideoEnabled, setIsVideoEnabled] = useState<boolean>(true);
+  const videoTilesMap = useRef<Map<string, HTMLVideoElement>>(new Map());
 
   const createMeeting = async () => {
     try {
@@ -96,7 +97,7 @@ const Home: React.FC = () => {
             return;
           }
 
-          let tileElement = document.getElementById(`video-${tileState.tileId}`) as HTMLVideoElement;
+          let tileElement = videoTilesMap.current.get(tileState.boundAttendeeId);
           if (!tileElement) {
             tileElement = document.createElement('video');
             tileElement.id = `video-${tileState.tileId}`;
@@ -109,6 +110,7 @@ const Home: React.FC = () => {
             const videoTilesContainer = document.getElementById('video-tiles');
             if (videoTilesContainer) {
               videoTilesContainer.appendChild(tileElement);
+              videoTilesMap.current.set(tileState.boundAttendeeId, tileElement);
               console.log(`Added video tile for attendee ${tileState.boundAttendeeId}`);
             } else {
               console.error('Video tiles container not found');
@@ -123,6 +125,13 @@ const Home: React.FC = () => {
           }
 
           console.log(`Bound video tile ${tileState.tileId} to attendee ${tileState.boundAttendeeId}`);
+        },
+        videoTileWasRemoved: (tileId: number) => {
+          console.log('Video tile removed', tileId);
+          const tileElement = document.getElementById(`video-${tileId}`);
+          if (tileElement) {
+            tileElement.remove();
+          }
         },
       };
 
