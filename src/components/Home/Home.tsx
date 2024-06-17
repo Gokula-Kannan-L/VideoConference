@@ -16,6 +16,9 @@ enum MeetType{
 
 const Home: React.FC = () => {
   const [meetingSession, setMeetingSession] = useState<DefaultMeetingSession | null>(null);
+
+  const [meetingSession2, setMeetingSession2] = useState<DefaultMeetingSession | null>(null);
+
   const [meetingId, setMeetingId] = useState<string>('');
   const [joinId, setJoinId] = useState<string>('');
 
@@ -105,6 +108,8 @@ const Home: React.FC = () => {
         },
         videoTileDidUpdate: (tileState: any) => {
           console.log('Video tile updated', tileState);
+          const tiles = meetingSession.audioVideo.getAllVideoTiles();
+          console.log("tiles------------------", tiles);
           if (!tileState.boundAttendeeId ) {
             return;
           }
@@ -161,6 +166,85 @@ const Home: React.FC = () => {
       };
     }
   }, [meetingSession]);
+
+  useEffect(() => {
+    if (meetingSession2) {
+      console.log('Meeting session started', meetingSession);
+
+      let localTileId: any = null;
+
+      const observer = {
+        audioVideoDidStart: () => {
+          console.log('Audio and video started----------------------');
+          const tiles = meetingSession2.audioVideo.getAllVideoTiles();
+          console.log("tiles------------------", tiles);
+        },
+        audioVideoDidStartConnecting: (reconnecting: any) => {
+          if (reconnecting) {
+            console.log('Attempting to reconnect--------------------');
+          }
+        },
+        videoTileDidUpdate: (tileState: any) => {
+          console.log('Video tile updated', tileState);
+          const tiles = meetingSession2.audioVideo.getAllVideoTiles();
+          console.log("tiles------------------", tiles);
+          if (!tileState.boundAttendeeId ) {
+            return;
+          }
+
+          if(localTileId){
+            console.log("TileId--------------------------------",tileState.tileId)
+            let tileElement = document.getElementById(`video-${localTileId}`) as HTMLVideoElement;
+            meetingSession2.audioVideo.bindVideoElement(localTileId, tileElement);
+          }
+          else{
+            let tileElement = document.getElementById(`video-${tileState.tileId +1 }`) as HTMLVideoElement;
+           
+            if (!tileElement) {
+              tileElement = document.createElement('video');
+              tileElement.id = `video-${tileState.tileId+1}`;
+              tileElement.style.width = '600px';
+              tileElement.style.height = '400px';
+              tileElement.style.backgroundColor = 'black';
+              tileElement.autoplay = true;
+              tileElement.muted = false;
+  
+              const videoTilesContainer = document.getElementById('video-tiles');
+              if (videoTilesContainer) {
+                videoTilesContainer.appendChild(tileElement);
+                console.log(`Added video tile for attendee ${tileState.boundAttendeeId}`);
+              } else {
+                console.error('Video tiles container not found');
+                return;
+              }
+            }
+  
+            meetingSession2.audioVideo.bindVideoElement(tileState.tileId+1, tileElement);
+          }
+
+
+          if (tileState.localTile) {
+            setLocalTileId(tileState.tileId+1);
+          }
+
+          console.log(`Bound video tile ${tileState.tileId+1} to attendee ${tileState.boundAttendeeId}`);
+
+        }
+      };
+
+      meetingSession2.audioVideo.addObserver(observer);
+      meetingSession2.audioVideo.startLocalVideoTile();
+
+
+      return () => {
+        console.log('Cleaning up meeting session');
+        meetingSession2.audioVideo.removeObserver(observer);
+        meetingSession2.audioVideo.stop();
+        setMeetingSession(null);
+      };
+    }
+  }, [meetingSession2]);
+
 const copyMeetingId = () => {
     navigator.clipboard.writeText(meetingId);
     alert('Meeting ID copied to clipboard');
@@ -203,7 +287,7 @@ const copyMeetingId = () => {
       meetingSession.audioVideo.bindAudioElement(audioElement);
 
       meetingSession.audioVideo.start();
-      setMeetingSession(meetingSession);
+      setMeetingSession2(meetingSession);
 
     }
   }
