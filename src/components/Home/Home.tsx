@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
   ConsoleLogger,
@@ -18,11 +18,12 @@ const Home: React.FC = () => {
   const [meetingSession, setMeetingSession] = useState<DefaultMeetingSession | null>(null);
   const [meetingId, setMeetingId] = useState<string>('');
   const [joinId, setJoinId] = useState<string>('');
+
   const [meetType, setMeetType] = useState<MeetType>();
   const [localTileId, setLocalTileId] = useState<number | null>(null);
+
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isVideoEnabled, setIsVideoEnabled] = useState<boolean>(true);
-  const videoTilesMap = useRef<Map<number, HTMLVideoElement>>(new Map());
 
   const createMeeting = async () => {
     try {
@@ -83,12 +84,13 @@ const Home: React.FC = () => {
 
       const observer = {
         audioVideoDidStart: () => {
-          console.log('Audio and video started');
-          meetingSession.audioVideo.startLocalVideoTile();
+          console.log('Audio and video started----------------------');
+          const tiles = meetingSession.audioVideo.getAllVideoTiles();
+          console.log('tiles------------------', tiles);
         },
-        audioVideoDidStartConnecting: (reconnecting: boolean) => {
+        audioVideoDidStartConnecting: (reconnecting: any) => {
           if (reconnecting) {
-            console.log('Attempting to reconnect');
+            console.log('Attempting to reconnect--------------------');
           }
         },
         videoTileDidUpdate: (tileState: any) => {
@@ -97,7 +99,7 @@ const Home: React.FC = () => {
             return;
           }
 
-          let tileElement = videoTilesMap.current.get(tileState.tileId);
+          let tileElement = document.getElementById(`video-${tileState.tileId}`) as HTMLVideoElement;
           if (!tileElement) {
             tileElement = document.createElement('video');
             tileElement.id = `video-${tileState.tileId}`;
@@ -110,7 +112,6 @@ const Home: React.FC = () => {
             const videoTilesContainer = document.getElementById('video-tiles');
             if (videoTilesContainer) {
               videoTilesContainer.appendChild(tileElement);
-              videoTilesMap.current.set(tileState.tileId, tileElement);
               console.log(`Added video tile for attendee ${tileState.boundAttendeeId}`);
             } else {
               console.error('Video tiles container not found');
@@ -126,22 +127,26 @@ const Home: React.FC = () => {
 
           console.log(`Bound video tile ${tileState.tileId} to attendee ${tileState.boundAttendeeId}`);
         },
-        videoTileWasRemoved: (tileId: number) => {
-          console.log('Video tile removed', tileId);
-          // Keep the tile but make it black instead of removing
-          const tileElement = videoTilesMap.current.get(tileId);
-          if (tileElement) {
-            tileElement.style.backgroundColor = 'black';
-            const stream = tileElement.srcObject as MediaStream;
-            if (stream) {
-              stream.getTracks().forEach(track => track.stop());
-              tileElement.srcObject = null;
-            }
+        videoTileWasRemoved: (tileId: any) => {
+          const tileElement = document.getElementById(`video-${tileId}`);
+          if (localTileId === tileId && tileElement) {
+            console.log(`You called removeLocalVideoTile. videoElement can be bound to another tile.`);
+            tileElement.remove();
+            console.log(`Removed video tile ${tileId}`);
+            setLocalTileId(null);
           }
         },
       };
 
       meetingSession.audioVideo.addObserver(observer);
+      meetingSession.audioVideo.startLocalVideoTile();
+
+      return () => {
+        console.log('Cleaning up meeting session');
+        meetingSession.audioVideo.removeObserver(observer);
+        meetingSession.audioVideo.stop();
+        setMeetingSession(null);
+      };
     }
   }, [meetingSession]);
 
@@ -161,12 +166,13 @@ const Home: React.FC = () => {
         }),
       });
       const attendee = await attendeeResponse.json();
-      console.log('New attendee', attendee);
+      console.log('New attendee-----------------------', attendee);
 
       const logger = new ConsoleLogger('ChimeLogger', LogLevel.INFO);
       const deviceController = new DefaultDeviceController(logger);
 
       const configuration = new MeetingSessionConfiguration(attendee.meeting, attendee.attendeeResponse);
+
       const meetingSession = new DefaultMeetingSession(configuration, logger, deviceController);
 
       const audioInputDevices = await meetingSession.audioVideo.listAudioInputDevices();
@@ -204,23 +210,10 @@ const Home: React.FC = () => {
   const toggleVideo = async () => {
     if (meetingSession) {
       if (isVideoEnabled) {
-        if (localTileId !== null) {
-          const tileElement = videoTilesMap.current.get(localTileId);
-          if (tileElement) {
-            tileElement.style.backgroundColor = 'black';
-            const stream = tileElement.srcObject as MediaStream;
-            if (stream) {
-              stream.getTracks().forEach(track => track.stop());
-              tileElement.srcObject = null;
-            }
-          }
-          await meetingSession.audioVideo.stopVideoInput();
-          setIsVideoEnabled(false);
-        }
+        await meetingSession.audioVideo.stopLocalVideoTile();
+        setIsVideoEnabled(false);
       } else {
-        const videoInputDevices = await meetingSession.audioVideo.listVideoInputDevices();
-        await meetingSession.audioVideo.startVideoInput(videoInputDevices[0].deviceId);
-        meetingSession.audioVideo.startLocalVideoTile();
+        await meetingSession.audioVideo.startLocalVideoTile();
         setIsVideoEnabled(true);
       }
     }
@@ -231,34 +224,31 @@ const Home: React.FC = () => {
       setMeetType(MeetType.CREATE);
     }
   }, [meetingSession]);
+
   return (
     <div className='home-container'>
       {!meetType && (
         <>
           <div className='create-meeting'>
-            <button onClick={createMeeting} className='create-btn'>
-              Create Meeting
-            </button>
+            <button onClick={createMeeting} className='create-btn'>Create Meeting</button>
           </div>
           <div>OR</div>
           <div className='join-meeting'>
             <input value={joinId} onChange={(e) => setJoinId(e.target.value)} className='meeting-input' placeholder='Enter meeting id' />
-            <button onClick={joinMeeting} className='join-btn'>
-              Join Meeting
-            </button>
+            <button onClick={joinMeeting} className='join-btn'>Join Meeting</button>
           </div>
         </>
       )}
       {MeetType.CREATE === meetType && (
         <>
-          <div id='video-tiles' style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+          <div id="video-tiles" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
             {/* Video tiles will be appended here */}
           </div>
-          <div className='controls-div'>
+          <div className="controls-div">
             <button onClick={toggleMute}>{isMuted ? 'Unmute' : 'Mute'}</button>
             <button onClick={toggleVideo}>{isVideoEnabled ? 'Stop Video' : 'Start Video'}</button>
           </div>
-          <div className='copy-meeting'>
+          <div className="copy-meeting">
             <button onClick={copyMeetingId}>Copy Meeting ID</button>
           </div>
         </>
