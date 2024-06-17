@@ -105,8 +105,7 @@ const Home: React.FC = () => {
         },
         videoTileDidUpdate: (tileState: any) => {
           console.log('Video tile updated', tileState);
-          if (!tileState.boundAttendeeId  || !tileState.localTile) {
-            console.log("Ignoring---------------------........................")
+          if (!tileState.boundAttendeeId) {
             return;
           }
 
@@ -138,7 +137,19 @@ const Home: React.FC = () => {
 
           console.log(`Bound video tile ${tileState.tileId} to attendee ${tileState.boundAttendeeId}`);
 
-        }
+        },videoTileWasRemoved: (tileId: any) => {
+          const tileElement = document.getElementById(`video-${tileId}`);
+          if (localTileId === tileId) {
+            console.log(`You called removeLocalVideoTile. videoElement can be bound to another tile.`);
+            if (tileElement) {
+              tileElement.remove();
+              console.log(`Removed video tile ${tileId}`);
+            }
+            if (localTileId === tileId) {
+              setLocalTileId(null);
+            }
+          }
+  }
       };
 
       meetingSession.audioVideo.addObserver(observer);
@@ -215,9 +226,11 @@ const copyMeetingId = () => {
 const toggleVideo = async() => {
     if (meetingSession) {
         if (isVideoEnabled) {
+          if (localTileId !== null) {
             await meetingSession.audioVideo.stopVideoInput();
             // meetingSession.audioVideo.stopLocalVideoTile();
             // meetingSession.audioVideo.removeLocalVideoTile();
+          }
          
             // meetingSession.audioVideo.stopLocalVideoTile();
             
