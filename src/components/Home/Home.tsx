@@ -105,7 +105,7 @@ const Home: React.FC = () => {
         },
         videoTileDidUpdate: (tileState: any) => {
           console.log('Video tile updated', tileState);
-          if (!tileState.boundAttendeeId) {
+          if (!tileState.boundAttendeeId || !tileState.localTile) {
             return;
           }
 
