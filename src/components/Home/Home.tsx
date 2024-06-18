@@ -1,12 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import {
-  ConsoleLogger,
-  DefaultDeviceController,
-  DefaultMeetingSession,
-  LogLevel,
-  MeetingSessionConfiguration,
-} from 'amazon-chime-sdk-js';
+import { AudioInputControl, MeetingManagerJoinOptions, VideoGrid, VideoInputControl, VideoTile, VideoTileGrid, useLocalVideo, useMeetingManager } from 'amazon-chime-sdk-component-library-react';
+import { MeetingSessionConfiguration } from 'amazon-chime-sdk-js';
 import './Home.scss'
 
 enum MeetType{
@@ -15,21 +10,28 @@ enum MeetType{
 }
 
 const Home: React.FC = () => {
-  const [meetingSession, setMeetingSession] = useState<DefaultMeetingSession | null>(null);
-
-  const [meetingSession2, setMeetingSession2] = useState<DefaultMeetingSession | null>(null);
+  
+  const meetingManager = useMeetingManager();
+  const { isVideoEnabled, setIsVideoEnabled } = useLocalVideo();
 
   const [meetingId, setMeetingId] = useState<string>('');
-  const [joinId, setJoinId] = useState<string>('');
+  const [joinMeetId, setJoinMeetId] = useState<string>('');
 
-  const [meetType, setMeetType] = useState<MeetType>();
-  const [localTileId, setLocalTileId] = useState<number | null>(null);
-
-
-  const [isMuted, setIsMuted] = useState<boolean>(false);
-  const [isVideoEnabled, setIsVideoEnabled] = useState<boolean>(true);
-
-
+  const toggleCamera = async () => {
+    console.log("isVideoEnabled-----------------------", isVideoEnabled, meetingManager.selectedVideoInputDevice);
+    if (isVideoEnabled || !meetingManager.selectedVideoInputDevice) {
+      meetingManager.meetingSession?.audioVideo?.stopLocalVideoTile();
+      // Change the state to hide the `LocalVideo` tile
+      setIsVideoEnabled(false);
+    } else {
+      await meetingManager.meetingSession?.audioVideo?.startVideoInput(
+        meetingManager.selectedVideoInputDevice
+      );
+      meetingManager.meetingSession?.audioVideo?.startLocalVideoTile();
+      // Change the state to display the `LocalVideo` tile
+      setIsVideoEnabled(true);
+    }
+  };
 
   const createMeeting = async () => {
     try {
@@ -52,36 +54,32 @@ const Home: React.FC = () => {
 
       if (!attendeeResponse.ok) {
         throw new Error('Failed to create attendee');
-}
+      }
       const attendeeData = await attendeeResponse.json();
 
-      console.log("meetingResponse-----------------",meetingResponse)
-      console.log("attendeeResponse-----------------", attendeeData)
-
-      const logger = new ConsoleLogger('ChimeLogger', LogLevel.INFO);
-      const deviceController = new DefaultDeviceController(logger);
-
       const configuration = new MeetingSessionConfiguration(meetingResponse, attendeeData);
-      const meetingSession = new DefaultMeetingSession(configuration, logger, deviceController);
 
-      const audioInputDevices = await meetingSession.audioVideo.listAudioInputDevices();
-      await meetingSession.audioVideo.startAudioInput(audioInputDevices[0].deviceId);
+      const deviceLabels = async () => await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      const options = {
+        deviceLabels,
+      };
 
-      const videoInputDevices = await meetingSession.audioVideo.listVideoInputDevices();
-      await meetingSession.audioVideo.startVideoInput(videoInputDevices[0].deviceId);
+      await meetingManager.join(configuration, options);
+      console.log("Meeting Manager-----------", meetingManager);
 
-      const audioOutputDevices = await meetingSession.audioVideo.listAudioOutputDevices();
-      await meetingSession.audioVideo.chooseAudioOutput(audioOutputDevices[0].deviceId);
+      await meetingManager.start();
 
-       // Create and bind audio element
-       const audioElement = document.createElement('audio');
-       audioElement.id = 'audio-element';
-       audioElement.autoplay = true;
-       document.body.appendChild(audioElement);
-       meetingSession.audioVideo.bindAudioElement(audioElement);
-
-      meetingSession.audioVideo.start();
-      setMeetingSession(meetingSession);
+      const videoInputDevices = await meetingManager.meetingSession?.audioVideo?.listVideoInputDevices();
+      const audioInputDevices = await meetingManager.meetingSession?.audioVideo?.listAudioInputDevices();
+      const audioOutputDevices = await meetingManager.meetingSession?.audioVideo?.listAudioOutputDevices();
+      
+      if(videoInputDevices)
+        await meetingManager.startVideoInputDevice(videoInputDevices[0].deviceId);
+      if(audioInputDevices)
+        await meetingManager.startVideoInputDevice(audioInputDevices[0].deviceId);
+      if(audioOutputDevices)
+        await meetingManager.startVideoInputDevice(audioOutputDevices[0].deviceId);
+     
 
     } catch (error) {
       console.error('Failed to join meeting:', error);
@@ -89,272 +87,89 @@ const Home: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    if (meetingSession) {
-      console.log('Meeting session started', meetingSession);
 
-      let localTileId: any = null;
+  const joinMeeting = async () => {
+    if(joinMeetId){
+      try {
+        const attendeeResponse = await fetch('https://ziinfncfqo52tguw3ewlhsrl7i0vvvny.lambda-url.us-east-1.on.aws/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+          MeetingId: joinMeetId,
+          ExternalUserId: uuidv4(),
+          }),
+      });
+      const attendee = await attendeeResponse.json();
+      console.log("New attendee-----------------------",attendee);
 
-      const observer = {
-        audioVideoDidStart: () => {
-          console.log('Audio and video started----------------------');
-          const tiles = meetingSession.audioVideo.getAllVideoTiles();
-          console.log("tiles------------------", tiles);
-        },
-        audioVideoDidStartConnecting: (reconnecting: any) => {
-          if (reconnecting) {
-            console.log('Attempting to reconnect--------------------');
-          }
-        },
-        videoTileDidUpdate: (tileState: any) => {
-          console.log('Video tile updated', tileState);
-          const tiles = meetingSession.audioVideo.getAllVideoTiles();
-          console.log("tiles------------------", tiles);
-          if (!tileState.boundAttendeeId ) {
-            return;
-          }
-
-          if(localTileId){
-            console.log("TileId--------------------------------",tileState.tileId)
-            let tileElement = document.getElementById(`video-${localTileId}`) as HTMLVideoElement;
-            meetingSession.audioVideo.bindVideoElement(localTileId, tileElement);
-          }
-          else{
-            let tileElement = document.getElementById(`video-${tileState.tileId}`) as HTMLVideoElement;
-           
-            if (!tileElement) {
-              tileElement = document.createElement('video');
-              tileElement.id = `video-${tileState.tileId}`;
-              tileElement.style.width = '600px';
-              tileElement.style.height = '400px';
-              tileElement.style.backgroundColor = 'black';
-              tileElement.autoplay = true;
-              tileElement.muted = false;
   
-              const videoTilesContainer = document.getElementById('video-tiles');
-              if (videoTilesContainer) {
-                videoTilesContainer.appendChild(tileElement);
-                console.log(`Added video tile for attendee ${tileState.boundAttendeeId}`);
-              } else {
-                console.error('Video tiles container not found');
-                return;
-              }
-            }
+        const configuration = new MeetingSessionConfiguration(attendee.meeting, attendee.attendeeResponse);
   
-            meetingSession.audioVideo.bindVideoElement(tileState.tileId, tileElement);
-          }
-
-
-          if (tileState.localTile) {
-            setLocalTileId(tileState.tileId);
-          }
-
-          console.log(`Bound video tile ${tileState.tileId} to attendee ${tileState.boundAttendeeId}`);
-
-        }
-      };
-
-      meetingSession.audioVideo.addObserver(observer);
-      meetingSession.audioVideo.startLocalVideoTile();
-
-
-      return () => {
-        console.log('Cleaning up meeting session');
-        meetingSession.audioVideo.removeObserver(observer);
-        meetingSession.audioVideo.stop();
-        setMeetingSession(null);
-      };
+        const deviceLabels = async () => await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        const options = {
+          deviceLabels,
+        };
+  
+        await meetingManager.join(configuration, options);
+        console.log("Meeting Manager-----------", meetingManager);
+  
+        await meetingManager.start();
+  
+        const videoInputDevices = await meetingManager.meetingSession?.audioVideo?.listVideoInputDevices();
+        const audioInputDevices = await meetingManager.meetingSession?.audioVideo?.listAudioInputDevices();
+        const audioOutputDevices = await meetingManager.meetingSession?.audioVideo?.listAudioOutputDevices();
+        
+        if(videoInputDevices)
+          await meetingManager.startVideoInputDevice(videoInputDevices[0].deviceId);
+        if(audioInputDevices)
+          await meetingManager.startVideoInputDevice(audioInputDevices[0].deviceId);
+        if(audioOutputDevices)
+          await meetingManager.startVideoInputDevice(audioOutputDevices[0].deviceId);
+       
+  
+      } catch (error) {
+        console.error('Failed to join meeting:', error);
+        alert('An error occurred while joining the meeting. Please try again.');
+      }
     }
-  }, [meetingSession]);
-
-  useEffect(() => {
-    if (meetingSession2) {
-      console.log('Meeting session started', meetingSession);
-
-      let localTileId: any = null;
-
-      const observer = {
-        audioVideoDidStart: () => {
-          console.log('Audio and video started----------------------');
-          const tiles = meetingSession2.audioVideo.getAllVideoTiles();
-          console.log("tiles------------------", tiles);
-        },
-        audioVideoDidStartConnecting: (reconnecting: any) => {
-          if (reconnecting) {
-            console.log('Attempting to reconnect--------------------');
-          }
-        },
-        videoTileDidUpdate: (tileState: any) => {
-          console.log('Video tile updated', tileState);
-          const tiles = meetingSession2.audioVideo.getAllVideoTiles();
-          console.log("tiles------------------", tiles);
-          if (!tileState.boundAttendeeId ) {
-            return;
-          }
-
-          if(localTileId){
-            console.log("TileId--------------------------------",tileState.tileId)
-            let tileElement = document.getElementById(`video-${localTileId}`) as HTMLVideoElement;
-            meetingSession2.audioVideo.bindVideoElement(localTileId, tileElement);
-          }
-          else{
-            let tileElement = document.getElementById(`video-${tileState.tileId +1 }`) as HTMLVideoElement;
-           
-            if (!tileElement) {
-              tileElement = document.createElement('video');
-              tileElement.id = `video-${tileState.tileId+1}`;
-              tileElement.style.width = '600px';
-              tileElement.style.height = '400px';
-              tileElement.style.backgroundColor = 'black';
-              tileElement.autoplay = true;
-              tileElement.muted = false;
-  
-              const videoTilesContainer = document.getElementById('video-tiles');
-              if (videoTilesContainer) {
-                videoTilesContainer.appendChild(tileElement);
-                console.log(`Added video tile for attendee ${tileState.boundAttendeeId}`);
-              } else {
-                console.error('Video tiles container not found');
-                return;
-              }
-            }
-  
-            meetingSession2.audioVideo.bindVideoElement(tileState.tileId+1, tileElement);
-          }
+   
+  };
 
 
-          if (tileState.localTile) {
-            setLocalTileId(tileState.tileId+1);
-          }
 
-          console.log(`Bound video tile ${tileState.tileId+1} to attendee ${tileState.boundAttendeeId}`);
-
-        }
-      };
-
-      meetingSession2.audioVideo.addObserver(observer);
-      meetingSession2.audioVideo.startLocalVideoTile();
-
-
-      return () => {
-        console.log('Cleaning up meeting session');
-        meetingSession2.audioVideo.removeObserver(observer);
-        meetingSession2.audioVideo.stop();
-        setMeetingSession(null);
-      };
-    }
-  }, [meetingSession2]);
-
-const copyMeetingId = () => {
+  const copyMeetingId = () => {
     navigator.clipboard.writeText(meetingId);
     alert('Meeting ID copied to clipboard');
   };
 
 
-  const joinMeeting = async() => {
-    if(joinId){
-      const attendeeResponse = await fetch('https://ziinfncfqo52tguw3ewlhsrl7i0vvvny.lambda-url.us-east-1.on.aws/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          MeetingId: joinId,
-          ExternalUserId: uuidv4(),
-        }),
-      });
-      const attendee = await attendeeResponse.json();
-      console.log("New attendee-----------------------",attendee)
 
-      const logger = new ConsoleLogger('ChimeLogger', LogLevel.INFO);
-      const deviceController = new DefaultDeviceController(logger);
-
-      const configuration = new MeetingSessionConfiguration(attendee.meeting, attendee.attendeeResponse);
-
-      const meetingSession = new DefaultMeetingSession(configuration, logger, deviceController);
-
-      const audioInputDevices = await meetingSession.audioVideo.listAudioInputDevices();
-      await meetingSession.audioVideo.startAudioInput(audioInputDevices[0].deviceId);
-
-      const videoInputDevices = await meetingSession.audioVideo.listVideoInputDevices();
-      await meetingSession.audioVideo.startVideoInput(videoInputDevices[0].deviceId);
-
-      const audioOutputDevices = await meetingSession.audioVideo.listAudioOutputDevices();
-      await meetingSession.audioVideo.chooseAudioOutput(audioOutputDevices[0].deviceId);
-
-       const audioElement = document.createElement('audio');
-      audioElement.id = 'audio-element';
-      audioElement.autoplay = true;
-      document.body.appendChild(audioElement);
-      meetingSession.audioVideo.bindAudioElement(audioElement);
-
-      meetingSession.audioVideo.start();
-      setMeetingSession2(meetingSession);
-
-    }
-  }
-
-  const toggleMute = () => {
-    if (meetingSession) {
-        if (isMuted) {
-            meetingSession.audioVideo.realtimeUnmuteLocalAudio();
-            setIsMuted(false);
-        } else {
-            meetingSession.audioVideo.realtimeMuteLocalAudio();
-            setIsMuted(true);
-        }
-    }
-};
-
-const toggleVideo = async() => {
-    if (meetingSession) {
-        if (isVideoEnabled) {
-            await meetingSession.audioVideo.stopVideoInput();
-            setIsVideoEnabled(false);
-        } else {
-          const videoInputDevices = await meetingSession.audioVideo.listVideoInputDevices();
-          await meetingSession.audioVideo.startVideoInput(videoInputDevices[0].deviceId);
-          
-          meetingSession.audioVideo.startLocalVideoTile();
-            setIsVideoEnabled(true);
-        }
-    }
-};
-
-useEffect( () => {
-  if(meetingSession || meetingSession2){
-    setMeetType(MeetType.CREATE);
-  }
-}, [meetingSession, meetingSession2])
 
   return (
     <div className='home-container'>
       {
-        !meetType &&
+       
         <>
         <div className='create-meeting'>
           <button onClick={createMeeting} className='create-btn'>Create Meeting</button>
         </div>
         <div>OR</div>
         <div className='join-meeting'>
-          <input value={joinId} onChange={ (e) => setJoinId(e.target.value)} className='meeting-input' placeholder='Enter meeting id'/>
-          <button onClick={joinMeeting} className='join-btn'>Join Meeting</button>
-        </div>
-        </>
-      }
-      {
-        MeetType.CREATE === meetType && 
-        <>
-           <div id="video-tiles" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-            {/* Video tiles will be appended here */}
-          </div>
-          <div className="controls-div">
-        <button onClick={toggleMute}>{isMuted ? 'Unmute' : 'Mute'}</button>
-        <button onClick={toggleVideo}>{isVideoEnabled ? 'Stop Video' : 'Start Video'}</button>
-
+          <input className='meeting-input' placeholder='Enter meeting id' value={joinMeetId} onChange={ (e) => setJoinMeetId(e.target.value)}/>
+          <button  className='join-btn' onClick={joinMeeting}>Join Meeting</button>
         </div>
         <div className="copy-meeting">
-          <button onClick={copyMeetingId}>Copy Meeting ID</button>
-        </div>  
+            <button onClick={copyMeetingId}>Copy Meeting ID</button>
+          </div>  
+        <button onClick={toggleCamera}>Join</button>
+          <VideoTileGrid />
+
+        <div className="controls-div">
+          <VideoInputControl />
+          <AudioInputControl />
+        </div>
         
+
         </>
       }
       
