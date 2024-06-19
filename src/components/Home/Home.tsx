@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { AudioInputControl, ContentShareControl, MeetingManagerJoinOptions, PreviewVideo, VideoGrid, VideoInputControl, VideoTile, VideoTileGrid, useLocalVideo, useMeetingManager } from 'amazon-chime-sdk-component-library-react';
 import { MeetingSessionConfiguration } from 'amazon-chime-sdk-js';
+import CallEndIcon from '@mui/icons-material/CallEnd';
 import './Home.scss'
 
 enum MeetType{
@@ -154,6 +155,18 @@ const Home: React.FC = () => {
     alert('Meeting ID copied to clipboard');
   };
 
+  const leaveMeeting = async () => {
+    try {
+      await meetingManager.leave();
+      setMeetType(MeetType.START);
+      setMeetingId('');
+      setJoinMeetId('');
+    } catch (error) {
+      console.error('Failed to leave meeting:', error);
+      alert('An error occurred while leaving the meeting. Please try again.');
+    }
+  };
+
 
 
 
@@ -176,15 +189,17 @@ const Home: React.FC = () => {
         {
         (meetType === MeetType.CREATE || meetType === MeetType.JOIN) &&
         <>
-          <div className="copy-meeting">
-              <button onClick={copyMeetingId}>Copy Meeting ID</button>
-          </div>  
+         
           {/* <button onClick={toggleCamera}>Join</button> */}
-            <VideoTileGrid />
+            <VideoTileGrid className='video-grid-container' noRemoteVideoView = {<div className='no-participants-div'>No Other Participants</div>}
+            />
           <div className="controls-div">
+            <div onClick={copyMeetingId} className="copy-meeting">Copy Meeting ID</div>
             <VideoInputControl />
             <AudioInputControl />
             <ContentShareControl />
+            <div onClick={leaveMeeting} className='leave-btn'><CallEndIcon color='error' fontSize='small'/></div>
+            
           </div> 
         </>
         }
