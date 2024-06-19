@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { AudioInputControl, ContentShareControl, Grid, LocalVideo, MeetingManagerJoinOptions, PreviewVideo, RemoteVideo, Roster, RosterAttendee, RosterGroup, VideoGrid, VideoInputControl, VideoTile, VideoTileGrid, useAttendeeStatus, useLocalVideo, useMeetingManager, useRemoteVideoTileState, useRosterState } from 'amazon-chime-sdk-component-library-react';
-import { MeetingSessionConfiguration } from 'amazon-chime-sdk-js';
+import { MeetingSessionConfiguration, VideoTileState } from 'amazon-chime-sdk-js';
 import CallEndIcon from '@mui/icons-material/CallEnd';
 import './Home.scss';
-import Avatar from '@mui/material/Avatar';
 import RemoteVideos from '../RemoteVideos/RemoteVideos';
+import { Avatar } from '@mui/material';
 
 enum MeetType{
   START = 'start',
@@ -22,11 +22,20 @@ const Home: React.FC = () => {
   const [meetType, setMeetType] = useState<MeetType>(MeetType.START);
 
   const [AttendeeId, setAttendeeId] = useState<string>(''); //Self AttendeeId
-  const [Attendees, setAttendees] = useState<string[]>([]);
+  const [Attendees, setAttendees] = useState<string[]>([]); //Others AttendeeId
+
+  const [username, setUserName] = useState<string>('');
 
   const [meetingId, setMeetingId] = useState<string>('');
   const [joinMeetId, setJoinMeetId] = useState<string>(''); 
+
   const { roster } = useRosterState();
+  const {
+    muted,
+    videoEnabled,
+    sharingContent,
+    signalStrength
+  } = useAttendeeStatus(AttendeeId);
 
   const toggleCamera = async () => {
 
@@ -45,62 +54,71 @@ const Home: React.FC = () => {
   };
 
   const createMeeting = async () => {
-    try {
-      const response = await fetch('https://fe2dreo6t3b7lycn5jx5k7qcbq0hdivl.lambda-url.us-east-1.on.aws/');
-      if (!response.ok) {
-        throw new Error('Failed to create meeting');
+    if(username){
+      try {
+        const response = await fetch('https://fe2dreo6t3b7lycn5jx5k7qcbq0hdivl.lambda-url.us-east-1.on.aws/');
+        if (!response.ok) {
+          throw new Error('Failed to create meeting');
+        }
+        const meetingResponse = await response.json();
+        setMeetingId(meetingResponse.Meeting.MeetingId);
+  
+        const attendeeResponse = await fetch('https://crrss6qqnipimjyqgryv2r2j6m0ijgop.lambda-url.us-east-1.on.aws/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            MeetingId: meetingResponse.Meeting.MeetingId,
+            ExternalUserId: uuidv4(),
+          }),
+        });
+  
+  
+        if (!attendeeResponse.ok) {
+          throw new Error('Failed to create attendee');
+        }
+        const attendeeData = await attendeeResponse.json();
+  
+        setAttendeeId(attendeeData.Attendee.AttendeeId);
+  
+        const configuration = new MeetingSessionConfiguration(meetingResponse, attendeeData);
+  
+        const deviceLabels = async () => await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        const options = {
+          deviceLabels,
+        };
+  
+        await meetingManager.join(configuration, options);
+        await meetingManager.start();
+  
+        const videoInputDevices = await meetingManager.meetingSession?.audioVideo?.listVideoInputDevices();
+        const audioInputDevices = await meetingManager.meetingSession?.audioVideo?.listAudioInputDevices();
+        const audioOutputDevices = await meetingManager.meetingSession?.audioVideo?.listAudioOutputDevices();
+        
+        if(videoInputDevices)
+          await meetingManager.startVideoInputDevice(videoInputDevices[0].deviceId);
+        if(audioInputDevices)
+          await meetingManager.startVideoInputDevice(audioInputDevices[0].deviceId);
+        if(audioOutputDevices)
+          await meetingManager.startVideoInputDevice(audioOutputDevices[0].deviceId);
+
+        meetingManager.meetingSession?.audioVideo.addObserver({
+          videoTileDidUpdate(tileState) {
+            tileState.nameplate = username;
+          },
+        })
+       
+        setMeetType(MeetType.CREATE);
+  
+      } catch (error) {
+        console.error('Failed to join meeting:', error);
+        alert('An error occurred while joining the meeting. Please try again.');
       }
-      const meetingResponse = await response.json();
-      setMeetingId(meetingResponse.Meeting.MeetingId);
-
-      const attendeeResponse = await fetch('https://crrss6qqnipimjyqgryv2r2j6m0ijgop.lambda-url.us-east-1.on.aws/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          MeetingId: meetingResponse.Meeting.MeetingId,
-          ExternalUserId: uuidv4(),
-        }),
-      });
-
-
-      if (!attendeeResponse.ok) {
-        throw new Error('Failed to create attendee');
-      }
-      const attendeeData = await attendeeResponse.json();
-
-      setAttendeeId(attendeeData.Attendee.AttendeeId);
-
-      const configuration = new MeetingSessionConfiguration(meetingResponse, attendeeData);
-
-      const deviceLabels = async () => await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-      const options = {
-        deviceLabels,
-      };
-
-      await meetingManager.join(configuration, options);
-      await meetingManager.start();
-
-      const videoInputDevices = await meetingManager.meetingSession?.audioVideo?.listVideoInputDevices();
-      const audioInputDevices = await meetingManager.meetingSession?.audioVideo?.listAudioInputDevices();
-      const audioOutputDevices = await meetingManager.meetingSession?.audioVideo?.listAudioOutputDevices();
-      
-      if(videoInputDevices)
-        await meetingManager.startVideoInputDevice(videoInputDevices[0].deviceId);
-      if(audioInputDevices)
-        await meetingManager.startVideoInputDevice(audioInputDevices[0].deviceId);
-      if(audioOutputDevices)
-        await meetingManager.startVideoInputDevice(audioOutputDevices[0].deviceId);
-     
-      setMeetType(MeetType.CREATE);
-
-    } catch (error) {
-      console.error('Failed to join meeting:', error);
-      alert('An error occurred while joining the meeting. Please try again.');
     }
+  
   };
 
   const joinMeeting = async () => {
-    if(joinMeetId){
+    if(joinMeetId && username.length > 0){
       try {
         const attendeeResponse = await fetch('https://ziinfncfqo52tguw3ewlhsrl7i0vvvny.lambda-url.us-east-1.on.aws/', {
           method: 'POST',
@@ -123,18 +141,24 @@ const Home: React.FC = () => {
         await navigator.mediaDevices.getUserMedia({ audio: true, video: true })
       );
   
-        const videoInputDevices = await meetingManager.meetingSession?.audioVideo?.listVideoInputDevices();
-        const audioInputDevices = await meetingManager.meetingSession?.audioVideo?.listAudioInputDevices();
-        const audioOutputDevices = await meetingManager.meetingSession?.audioVideo?.listAudioOutputDevices();
+      const videoInputDevices = await meetingManager.meetingSession?.audioVideo?.listVideoInputDevices();
+      const audioInputDevices = await meetingManager.meetingSession?.audioVideo?.listAudioInputDevices();
+      const audioOutputDevices = await meetingManager.meetingSession?.audioVideo?.listAudioOutputDevices();
         
-        if(videoInputDevices)
-          await meetingManager.startVideoInputDevice(videoInputDevices[0].deviceId);
-        if(audioInputDevices)
-          await meetingManager.startVideoInputDevice(audioInputDevices[0].deviceId);
-        if(audioOutputDevices)
-          await meetingManager.startVideoInputDevice(audioOutputDevices[0].deviceId);
-       
-        setMeetType(MeetType.JOIN);
+      if(videoInputDevices)
+        await meetingManager.startVideoInputDevice(videoInputDevices[0].deviceId);
+      if(audioInputDevices)
+        await meetingManager.startVideoInputDevice(audioInputDevices[0].deviceId);
+      if(audioOutputDevices)
+        await meetingManager.startVideoInputDevice(audioOutputDevices[0].deviceId);
+
+      meetingManager.meetingSession?.audioVideo.addObserver({
+        videoTileDidUpdate(tileState) {
+          tileState.nameplate = username;
+        },
+      })
+      
+      setMeetType(MeetType.JOIN);
   
       } catch (error) {
         console.error('Failed to join meeting:', error);
@@ -171,6 +195,7 @@ const Home: React.FC = () => {
 
   useEffect( () => {
     if(roster){
+      console.log(roster);
       const attendees = Object.values(roster);
       let temp :string[] = [];
       attendees.map( ({chimeAttendeeId, externalUserId}) => {
@@ -184,26 +209,23 @@ const Home: React.FC = () => {
   }, [roster]);
 
 
-  useEffect( () => {
-    console.log("Attendees--------------------------",Attendees);
-  }, [Attendees])
-
-
   return (
     <div className='home-container'>
       {
         <>
         {meetType === MeetType.START && 
-        <>
-        <div className='create-meeting'>
-          <button onClick={createMeeting} className='create-btn'>Create Meeting</button>
+        <div className='main-container'>
+          <div className='create-meeting'>
+            <input className='meeting-input' placeholder='Enter your name' value={username} onChange={ (e) => setUserName(e.target.value)}/>
+            <button onClick={createMeeting} className='create-btn'>Create Meeting</button>
+          </div>
+          <div>OR</div>
+          <div className='join-meeting'>
+            <input className='meeting-input' placeholder='Enter meeting id' value={joinMeetId} onChange={ (e) => setJoinMeetId(e.target.value)}/>
+            <input className='meeting-input' placeholder='Enter your name' value={username} onChange={ (e) => setUserName(e.target.value)}/>
+            <button  className='join-btn' onClick={joinMeeting}>Join Meeting</button>
+          </div>
         </div>
-        <div>OR</div>
-        <div className='join-meeting'>
-          <input className='meeting-input' placeholder='Enter meeting id' value={joinMeetId} onChange={ (e) => setJoinMeetId(e.target.value)}/>
-          <button  className='join-btn' onClick={joinMeeting}>Join Meeting</button>
-        </div>
-        </>
         }
         {
         (meetType === MeetType.CREATE || meetType === MeetType.JOIN) &&
@@ -213,7 +235,10 @@ const Home: React.FC = () => {
             /> */}
 
             <Grid responsive >
-              <LocalVideo nameplate='Me'/>
+              {videoEnabled ? 
+                <LocalVideo nameplate={username}/> : 
+                <div style={{display:'flex', justifyContent:'center', alignItems:'center'}}><Avatar sx={{ width: 100, height: 100, fontSize: 24, fontWeight:600 }}>{username[0].toUpperCase()}</Avatar></div>
+              }
               {Attendees.length > 0 &&  
                 Attendees.map( (id: string, index) =>  <RemoteVideos AttendeeId={id} key={index}/>)
              
