@@ -31,5 +31,37 @@
     }
     .controls-div{
         padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        .copy-meeting{
+            border: 1px solid  rgb(228, 233, 242);
+            padding: 10px;
+            color: rgb(228, 233, 242);
+            font-size: 14px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        .leave-btn{
+            cursor: pointer;
+            margin: 0px 0.625rem;
+            background-color: #bbb;
+            border-radius: 20px;
+            display: inline-block;
+            padding: 4px;
+        }
+    }
+    .video-grid-container > div{
+        display: block !important;
+    }
+    .video-grid-container{
+        .no-participants-div{
+            display: flex !important;
+            justify-content: center;
+            align-items: center;
+            color: rgb(228, 233, 242);
+            font-size: 20px;
+            font-weight: 500;
+        }
     }
 }
