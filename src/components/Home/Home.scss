@@ -1,67 +1,36 @@
-.home-container{
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    .create-meeting{
-        padding: 20px;
-        .create-btn{
-            width: 14rem;
-            height: 3rem;
-            font-size: 18px;
-        }
-    }
-    .join-meeting{
-        display: flex;
-        flex-direction: column;
-        padding: 20px;
-        .meeting-input{
-            width: 14rem;
-            height: 2.5rem;
-            font-size: 14px;
-            margin-bottom: 10px;
-            padding: 5px;
-        }
-        .join-btn{
-            width: 14rem;
-            height: 3rem;
-            font-size: 18px;
-        }
-    }
-    .controls-div{
-        padding: 20px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        .copy-meeting{
-            border: 1px solid  rgb(228, 233, 242);
-            padding: 10px;
-            color: rgb(228, 233, 242);
-            font-size: 14px;
-            border-radius: 10px;
-            cursor: pointer;
-        }
-        .leave-btn{
-            cursor: pointer;
-            margin: 0px 0.625rem;
-            background-color: #bbb;
-            border-radius: 20px;
-            display: inline-block;
-            padding: 4px;
-        }
-    }
-    .video-grid-container > div{
-        display: block !important;
-    }
-    .video-grid-container{
-        .no-participants-div{
-            display: flex !important;
-            justify-content: center;
-            align-items: center;
-            color: rgb(228, 233, 242);
-            font-size: 20px;
-            font-weight: 500;
-        }
-    }
+import React, { FunctionComponent, useEffect } from "react";
+import { RemoteVideo, useAttendeeStatus, useRemoteVideoTileState } from 'amazon-chime-sdk-component-library-react';
+import Avatar from '@mui/material/Avatar';
+
+type props = {
+    AttendeeId: string
 }
+
+const RemoteVideos:FunctionComponent<props> = ({AttendeeId}) => {
+
+    const {
+        muted,
+        videoEnabled,
+        sharingContent,
+        signalStrength
+      } = useAttendeeStatus(AttendeeId);
+
+    const { tiles, attendeeIdToTileId } = useRemoteVideoTileState();
+
+    useEffect( () => {
+        console.log(AttendeeId, attendeeIdToTileId[AttendeeId]);
+        
+    },[tiles, attendeeIdToTileId])
+    return(
+        <>
+        {
+            videoEnabled ? 
+                <RemoteVideo tileId={attendeeIdToTileId[AttendeeId]} name={AttendeeId}/> 
+                : 
+                <div style={{display:'flex', justifyContent:'center', alignItems:'center'}}><Avatar sx={{ width: 100, height: 100, fontSize: 24, fontWeight:600 }}>hi</Avatar></div>
+        }
+        </>
+    )
+}
+
+export default RemoteVideos;
