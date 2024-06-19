@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { AudioInputControl, MeetingManagerJoinOptions, VideoGrid, VideoInputControl, VideoTile, VideoTileGrid, useLocalVideo, useMeetingManager } from 'amazon-chime-sdk-component-library-react';
+import { AudioInputControl, ContentShareControl, MeetingManagerJoinOptions, PreviewVideo, VideoGrid, VideoInputControl, VideoTile, VideoTileGrid, useLocalVideo, useMeetingManager } from 'amazon-chime-sdk-component-library-react';
 import { MeetingSessionConfiguration } from 'amazon-chime-sdk-js';
 import './Home.scss'
 
 enum MeetType{
+  START = 'start',
   CREATE = 'create',
   JOIN = 'join'
 }
@@ -13,6 +14,7 @@ const Home: React.FC = () => {
   
   const meetingManager = useMeetingManager();
   const { isVideoEnabled, setIsVideoEnabled } = useLocalVideo();
+  const [meetType, setMeetType] = useState<MeetType>(MeetType.START);
 
   const [meetingId, setMeetingId] = useState<string>('');
   const [joinMeetId, setJoinMeetId] = useState<string>('');
@@ -80,13 +82,13 @@ const Home: React.FC = () => {
       if(audioOutputDevices)
         await meetingManager.startVideoInputDevice(audioOutputDevices[0].deviceId);
      
+      setMeetType(MeetType.CREATE);
 
     } catch (error) {
       console.error('Failed to join meeting:', error);
       alert('An error occurred while joining the meeting. Please try again.');
     }
   };
-
 
   const joinMeeting = async () => {
     if(joinMeetId){
@@ -103,17 +105,18 @@ const Home: React.FC = () => {
       console.log("New attendee-----------------------",attendee);
 
   
-        const configuration = new MeetingSessionConfiguration(attendee.meeting, attendee.attendeeResponse);
+      const configuration = new MeetingSessionConfiguration(attendee.meeting, attendee.attendeeResponse);
   
-        const deviceLabels = async () => await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-        const options = {
-          deviceLabels,
-        };
-  
-        await meetingManager.join(configuration, options);
-        console.log("Meeting Manager-----------", meetingManager);
-  
-        await meetingManager.start();
+      await meetingManager.join(configuration);
+
+      meetingManager.meetingSession?.audioVideo.setDeviceLabelTrigger(() => Promise.resolve(new MediaStream()));
+      console.log("Meeting Manager-----------", meetingManager);
+
+      await meetingManager.start();
+
+      meetingManager.meetingSession?.audioVideo.setDeviceLabelTrigger(async () => 
+        await navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+      );
   
         const videoInputDevices = await meetingManager.meetingSession?.audioVideo?.listVideoInputDevices();
         const audioInputDevices = await meetingManager.meetingSession?.audioVideo?.listAudioInputDevices();
@@ -126,6 +129,7 @@ const Home: React.FC = () => {
         if(audioOutputDevices)
           await meetingManager.startVideoInputDevice(audioOutputDevices[0].deviceId);
        
+        setMeetType(MeetType.JOIN);
   
       } catch (error) {
         console.error('Failed to join meeting:', error);
@@ -134,6 +138,14 @@ const Home: React.FC = () => {
     }
    
   };
+
+  useEffect( () => {
+    if(meetType === MeetType.CREATE || meetType === MeetType.JOIN)
+      toggleCamera();
+  }, [meetType])
+
+
+
 
 
 
@@ -148,7 +160,8 @@ const Home: React.FC = () => {
   return (
     <div className='home-container'>
       {
-       
+        <>
+        {meetType === MeetType.START && 
         <>
         <div className='create-meeting'>
           <button onClick={createMeeting} className='create-btn'>Create Meeting</button>
@@ -158,16 +171,23 @@ const Home: React.FC = () => {
           <input className='meeting-input' placeholder='Enter meeting id' value={joinMeetId} onChange={ (e) => setJoinMeetId(e.target.value)}/>
           <button  className='join-btn' onClick={joinMeeting}>Join Meeting</button>
         </div>
-        <div className="copy-meeting">
-            <button onClick={copyMeetingId}>Copy Meeting ID</button>
+        </>
+        }
+        {
+        (meetType === MeetType.CREATE || meetType === MeetType.JOIN) &&
+        <>
+          <div className="copy-meeting">
+              <button onClick={copyMeetingId}>Copy Meeting ID</button>
           </div>  
-        <button onClick={toggleCamera}>Join</button>
-          <VideoTileGrid />
-
-        <div className="controls-div">
-          <VideoInputControl />
-          <AudioInputControl />
-        </div>
+          {/* <button onClick={toggleCamera}>Join</button> */}
+            <VideoTileGrid />
+          <div className="controls-div">
+            <VideoInputControl />
+            <AudioInputControl />
+            <ContentShareControl />
+          </div> 
+        </>
+        }
         
 
         </>
