@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { AudioInputControl, ContentShareControl, MeetingManagerJoinOptions, PreviewVideo, VideoGrid, VideoInputControl, VideoTile, VideoTileGrid, useLocalVideo, useMeetingManager } from 'amazon-chime-sdk-component-library-react';
+import { AudioInputControl, ContentShareControl, Grid, LocalVideo, MeetingManagerJoinOptions, PreviewVideo, RemoteVideo, RemoteVideos, Roster, RosterAttendee, RosterGroup, VideoGrid, VideoInputControl, VideoTile, VideoTileGrid, useAttendeeStatus, useLocalVideo, useMeetingManager, useRemoteVideoTileState, useRosterState } from 'amazon-chime-sdk-component-library-react';
 import { MeetingSessionConfiguration } from 'amazon-chime-sdk-js';
 import CallEndIcon from '@mui/icons-material/CallEnd';
-import './Home.scss'
+import './Home.scss';
+import Avatar from '@mui/material/Avatar';
 
 enum MeetType{
   START = 'start',
@@ -11,17 +12,23 @@ enum MeetType{
   JOIN = 'join'
 }
 
+
+
 const Home: React.FC = () => {
   
   const meetingManager = useMeetingManager();
   const { isVideoEnabled, setIsVideoEnabled } = useLocalVideo();
   const [meetType, setMeetType] = useState<MeetType>(MeetType.START);
 
+  const [AttendeeId, setAttendeeId] = useState<string>(''); //Self AttendeeId
+  const [Attendees, setAttendees] = useState<string[]>([]);
+
   const [meetingId, setMeetingId] = useState<string>('');
-  const [joinMeetId, setJoinMeetId] = useState<string>('');
+  const [joinMeetId, setJoinMeetId] = useState<string>(''); 
+  const { roster } = useRosterState();
 
   const toggleCamera = async () => {
-    console.log("isVideoEnabled-----------------------", isVideoEnabled, meetingManager.selectedVideoInputDevice);
+
     if (isVideoEnabled || !meetingManager.selectedVideoInputDevice) {
       meetingManager.meetingSession?.audioVideo?.stopLocalVideoTile();
       // Change the state to hide the `LocalVideo` tile
@@ -60,6 +67,8 @@ const Home: React.FC = () => {
       }
       const attendeeData = await attendeeResponse.json();
 
+      setAttendeeId(attendeeData.Attendee.AttendeeId);
+
       const configuration = new MeetingSessionConfiguration(meetingResponse, attendeeData);
 
       const deviceLabels = async () => await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
@@ -68,8 +77,6 @@ const Home: React.FC = () => {
       };
 
       await meetingManager.join(configuration, options);
-      console.log("Meeting Manager-----------", meetingManager);
-
       await meetingManager.start();
 
       const videoInputDevices = await meetingManager.meetingSession?.audioVideo?.listVideoInputDevices();
@@ -103,16 +110,12 @@ const Home: React.FC = () => {
           }),
       });
       const attendee = await attendeeResponse.json();
-      console.log("New attendee-----------------------",attendee);
-
-  
+      setAttendeeId(attendee.attendeeResponse.Attendee.AttendeeId);
+   
       const configuration = new MeetingSessionConfiguration(attendee.meeting, attendee.attendeeResponse);
-  
       await meetingManager.join(configuration);
 
       meetingManager.meetingSession?.audioVideo.setDeviceLabelTrigger(() => Promise.resolve(new MediaStream()));
-      console.log("Meeting Manager-----------", meetingManager);
-
       await meetingManager.start();
 
       meetingManager.meetingSession?.audioVideo.setDeviceLabelTrigger(async () => 
@@ -146,11 +149,7 @@ const Home: React.FC = () => {
   }, [meetType])
 
 
-
-
-
-
-  const copyMeetingId = () => {
+  const copyMeetingId = async() => {
     navigator.clipboard.writeText(meetingId);
     alert('Meeting ID copied to clipboard');
   };
@@ -168,6 +167,25 @@ const Home: React.FC = () => {
   };
 
 
+
+  useEffect( () => {
+    if(roster){
+      const attendees = Object.values(roster);
+      let temp :string[] = [];
+      attendees.map( ({chimeAttendeeId, externalUserId}) => {
+        if(chimeAttendeeId !== AttendeeId ){
+          temp.push(chimeAttendeeId);
+        }
+     })
+     setAttendees(temp);
+    }
+    
+  }, [roster]);
+
+
+  useEffect( () => {
+    console.log("Attendees--------------------------",Attendees);
+  }, [Attendees])
 
 
   return (
@@ -189,10 +207,14 @@ const Home: React.FC = () => {
         {
         (meetType === MeetType.CREATE || meetType === MeetType.JOIN) &&
         <>
-         
-          {/* <button onClick={toggleCamera}>Join</button> */}
-            <VideoTileGrid className='video-grid-container' noRemoteVideoView = {<div className='no-participants-div'>No Other Participants</div>}
-            />
+            {/* <VideoTileGrid className='video-grid-container' 
+            // noRemoteVideoView = {<div className='no-participants-div'>No Other Participants</div>}
+            /> */}
+
+            <Grid responsive >
+              <LocalVideo nameplate='Me'/>
+
+            </Grid>
           <div className="controls-div">
             <div onClick={copyMeetingId} className="copy-meeting">Copy Meeting ID</div>
             <VideoInputControl />
