@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { AudioInputControl, ContentShareControl, Grid, LocalVideo, MeetingManagerJoinOptions, PreviewVideo, RemoteVideo, RemoteVideos, Roster, RosterAttendee, RosterGroup, VideoGrid, VideoInputControl, VideoTile, VideoTileGrid, useAttendeeStatus, useLocalVideo, useMeetingManager, useRemoteVideoTileState, useRosterState } from 'amazon-chime-sdk-component-library-react';
+import { AudioInputControl, ContentShareControl, Grid, LocalVideo, MeetingManagerJoinOptions, PreviewVideo, RemoteVideo, Roster, RosterAttendee, RosterGroup, VideoGrid, VideoInputControl, VideoTile, VideoTileGrid, useAttendeeStatus, useLocalVideo, useMeetingManager, useRemoteVideoTileState, useRosterState } from 'amazon-chime-sdk-component-library-react';
 import { MeetingSessionConfiguration } from 'amazon-chime-sdk-js';
 import CallEndIcon from '@mui/icons-material/CallEnd';
 import './Home.scss';
 import Avatar from '@mui/material/Avatar';
+import RemoteVideos from '../RemoteVideos/RemoteVideos';
 
 enum MeetType{
   START = 'start',
@@ -213,7 +214,10 @@ const Home: React.FC = () => {
 
             <Grid responsive >
               <LocalVideo nameplate='Me'/>
-
+              {Attendees.length > 0 &&  
+                Attendees.map( (id: string, index) =>  <RemoteVideos AttendeeId={id} key={index}/>)
+             
+              }
             </Grid>
           <div className="controls-div">
             <div onClick={copyMeetingId} className="copy-meeting">Copy Meeting ID</div>
