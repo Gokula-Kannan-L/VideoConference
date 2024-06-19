@@ -7,7 +7,7 @@ import {
   darkTheme,
 } from 'amazon-chime-sdk-component-library-react';
 import Home from './components/Home/Home';
-import Meeting from './components/Meetings/Meetings';
+// import Meeting from './components/Meetings/Meetings';
 
 
 
