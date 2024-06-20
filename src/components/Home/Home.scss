@@ -45,12 +45,26 @@
             }
         }
     }
+
+    .grid-container{
+        position: relative;
+        .local-video{
+            width: 350px;
+            height: 200px;
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background-color: #343434;
+        }
+    }
    
     .controls-div{
+        width: 100%;
         padding: 20px;
         display: flex;
         justify-content: center;
         align-items: center;
+        background-color: black;
         .copy-meeting{
             border: 1px solid  rgb(228, 233, 242);
             padding: 10px;
