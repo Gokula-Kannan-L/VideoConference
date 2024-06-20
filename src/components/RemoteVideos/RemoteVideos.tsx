@@ -17,17 +17,13 @@ const RemoteVideos:FunctionComponent<props> = ({AttendeeId}) => {
 
     const { tiles, attendeeIdToTileId } = useRemoteVideoTileState();
 
-    useEffect( () => {
-        console.log(AttendeeId, attendeeIdToTileId[AttendeeId]);
-        
-    },[tiles, attendeeIdToTileId])
     return(
         <>
         {
             videoEnabled ? 
-                <RemoteVideo tileId={attendeeIdToTileId[AttendeeId]} name={AttendeeId}/> 
+                <RemoteVideo tileId={attendeeIdToTileId[AttendeeId]} name={AttendeeId} className={`remote-video${attendeeIdToTileId[AttendeeId]}`}/> 
                 : 
-                <div style={{display:'flex', justifyContent:'center', alignItems:'center'}}><Avatar sx={{ width: 100, height: 100, fontSize: 24, fontWeight:600 }}>hi</Avatar></div>
+                <div style={{display:'flex', justifyContent:'center', alignItems:'center'}}><Avatar sx={{ width: 100, height: 100, fontSize: 24, fontWeight:600 }}>U</Avatar></div>
         }
         </>
     )
