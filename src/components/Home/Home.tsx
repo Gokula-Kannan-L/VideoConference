@@ -1,19 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { AudioInputControl, ContentShareControl, Grid, LocalVideo, MeetingManagerJoinOptions, PreviewVideo, RemoteVideo, Roster, RosterAttendee, RosterGroup, VideoGrid, VideoInputControl, VideoTile, VideoTileGrid, useAttendeeStatus, useLocalVideo, useMeetingManager, useRemoteVideoTileState, useRosterState } from 'amazon-chime-sdk-component-library-react';
+import { AudioInputControl, ContentShare, ContentShareControl, Grid, LocalVideo, MeetingManagerJoinOptions, PreviewVideo, RemoteVideo, Roster, RosterAttendee, RosterGroup, VideoGrid, VideoInputControl, VideoTile, VideoTileGrid, useAttendeeStatus, useLocalVideo, useMeetingManager, useRemoteVideoTileState, useRosterState } from 'amazon-chime-sdk-component-library-react';
 import { MeetingSessionConfiguration, VideoTileState } from 'amazon-chime-sdk-js';
 import CallEndIcon from '@mui/icons-material/CallEnd';
 import './Home.scss';
 import RemoteVideos from '../RemoteVideos/RemoteVideos';
 import { Avatar } from '@mui/material';
+import { CreateAttendeeRequest } from '@aws-sdk/client-chime-sdk-meetings';
 
 enum MeetType{
   START = 'start',
   CREATE = 'create',
   JOIN = 'join'
 }
-
-
 
 const Home: React.FC = () => {
   
@@ -68,9 +67,11 @@ const Home: React.FC = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             MeetingId: meetingResponse.Meeting.MeetingId,
-            ExternalUserId: uuidv4(),
+            ExternalUserId: uuidv4()
           }),
         });
+
+        console.log("AttendeeResponse----------------",attendeeResponse);
   
   
         if (!attendeeResponse.ok) {
@@ -88,6 +89,8 @@ const Home: React.FC = () => {
         };
   
         await meetingManager.join(configuration, options);
+   
+  
         await meetingManager.start();
   
         const videoInputDevices = await meetingManager.meetingSession?.audioVideo?.listVideoInputDevices();
@@ -101,12 +104,6 @@ const Home: React.FC = () => {
         if(audioOutputDevices)
           await meetingManager.startVideoInputDevice(audioOutputDevices[0].deviceId);
 
-        meetingManager.meetingSession?.audioVideo.addObserver({
-          videoTileDidUpdate(tileState) {
-            tileState.nameplate = username;
-          },
-        })
-       
         setMeetType(MeetType.CREATE);
   
       } catch (error) {
@@ -135,6 +132,7 @@ const Home: React.FC = () => {
       await meetingManager.join(configuration);
 
       meetingManager.meetingSession?.audioVideo.setDeviceLabelTrigger(() => Promise.resolve(new MediaStream()));
+  
       await meetingManager.start();
 
       meetingManager.meetingSession?.audioVideo.setDeviceLabelTrigger(async () => 
@@ -152,11 +150,7 @@ const Home: React.FC = () => {
       if(audioOutputDevices)
         await meetingManager.startVideoInputDevice(audioOutputDevices[0].deviceId);
 
-      meetingManager.meetingSession?.audioVideo.addObserver({
-        videoTileDidUpdate(tileState) {
-          tileState.nameplate = username;
-        },
-      })
+      
       
       setMeetType(MeetType.JOIN);
   
@@ -171,11 +165,15 @@ const Home: React.FC = () => {
   useEffect( () => {
     if(meetType === MeetType.CREATE || meetType === MeetType.JOIN)
       toggleCamera();
+
   }, [meetType])
 
 
   const copyMeetingId = async() => {
     navigator.clipboard.writeText(meetingId);
+    if(meetingManager && AttendeeId)
+      console.log("All VideoTiles------------------------", meetingManager.meetingSession?.audioVideo.getAllVideoTiles())
+
     alert('Meeting ID copied to clipboard');
   };
 
@@ -198,7 +196,7 @@ const Home: React.FC = () => {
       console.log(roster);
       const attendees = Object.values(roster);
       let temp :string[] = [];
-      attendees.map( ({chimeAttendeeId, externalUserId}) => {
+      attendees.map( ({chimeAttendeeId, externalUserId} ) => {
         if(chimeAttendeeId !== AttendeeId ){
           temp.push(chimeAttendeeId);
         }
@@ -234,14 +232,14 @@ const Home: React.FC = () => {
             // noRemoteVideoView = {<div className='no-participants-div'>No Other Participants</div>}
             /> */}
 
-            <Grid responsive >
+            <Grid responsive className='grid-container'  >
+              <ContentShare nameplate='You are presenting' className='local-share'/>
               {videoEnabled ? 
-                <LocalVideo nameplate={username}/> : 
-                <div style={{display:'flex', justifyContent:'center', alignItems:'center'}}><Avatar sx={{ width: 100, height: 100, fontSize: 24, fontWeight:600 }}>{username[0].toUpperCase()}</Avatar></div>
+                <LocalVideo nameplate={username} className='local-video'/> : 
+                <div style={{display:'flex', justifyContent:'center', alignItems:'center'}}  className='local-video'><Avatar sx={{ width: 100, height: 100, fontSize: 40, fontWeight:600, backgroundColor: 'rgb(41, 220, 248)' }} >{username[0].toUpperCase()}</Avatar></div>
               }
               {Attendees.length > 0 &&  
                 Attendees.map( (id: string, index) =>  <RemoteVideos AttendeeId={id} key={index}/>)
-             
               }
             </Grid>
           <div className="controls-div">
