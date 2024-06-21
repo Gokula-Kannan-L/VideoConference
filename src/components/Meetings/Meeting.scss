@@ -28,7 +28,6 @@
             }
             .share-container{
                 height: 100%;
-                width: 80%;
                 border-radius: 10px;
                 padding: 10px;
                 position: relative;
@@ -46,7 +45,7 @@
                     }
                 }
                 .local-share > video{
-                    object-fit: cover;
+                    object-fit: inherit;
                     border-radius: 10px;
                 }
             }
@@ -55,7 +54,8 @@
                 padding: 10px;
             }
             .remote-container{
-                height: 200px;
+                height: 220px;
+                margin: 10px 10px 0 10px;
                 width: 100%;
                 overflow-x: auto;
             }
@@ -90,11 +90,26 @@
         }
         .leave-btn{
             cursor: pointer;
-            margin: 0px 0.625rem;
+            margin: 0px 1.625rem;
             background-color: #bbb;
             border-radius: 20px;
             display: inline-block;
             padding: 4px;
+        }
+        .share-btn{
+            cursor: pointer;
+            padding: 4px 10px;
+            svg{
+                color: rgb(228, 233, 242);
+            } 
+        }
+        .share-btn:hover{
+            background-color: rgb(41, 220, 248);
+            border-radius: 20px;
+           
+            svg{
+                fill:#16161d;
+            } 
         }
     }
 }
