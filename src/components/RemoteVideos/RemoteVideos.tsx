@@ -20,10 +20,7 @@ const RemoteVideos:FunctionComponent<props> = ({AttendeeId, setRemoteSharing}) =
     const { tiles, attendeeIdToTileId } = useRemoteVideoTileState();
 
     useEffect( () => {
-        console.log("remoteShare",sharingContent)
-        if(sharingContent){
-            setRemoteSharing(sharingContent);
-        }
+        setRemoteSharing(sharingContent);
     }, [sharingContent])
 
     return(
