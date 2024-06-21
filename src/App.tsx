@@ -7,7 +7,8 @@ import {
   darkTheme,
 } from 'amazon-chime-sdk-component-library-react';
 import Home from './components/Home/Home';
-// import Meeting from './components/Meetings/Meetings';
+import { Route, Routes } from 'react-router-dom';
+import Meeting from './components/Meetings/Meeting';
 
 
 
@@ -16,7 +17,10 @@ const App: React.FC = () => {
     <ThemeProvider theme={darkTheme}>
     <GlobalStyles />
     <MeetingProvider>
-      <Home />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/meeting" element={<Meeting/>}/>
+      </Routes>
     </MeetingProvider>
   </ThemeProvider>
   );
