@@ -1,0 +1,100 @@
+.main-container{
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    .wrap-container{
+        display: flex;
+        height: 100%;
+        .meet-container{
+            height: 100%;
+            width: 80%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            .local-video{
+                height: 100%;
+                border-radius: 10px;
+                background-color: #16161d;
+                .avatar-icon{
+                    width: 120px; 
+                    height: 120px; 
+                    font-size: 40px;
+                    font-weight:600;
+                    background-color: rgb(41, 220, 248);
+                }
+                video{
+                    border-radius: 10px;
+                }
+            }
+            .share-container{
+                height: 100%;
+                width: 80%;
+                border-radius: 10px;
+                padding: 10px;
+                position: relative;
+                .localshare-video{
+                    width: 350px;
+                    height: 200px;
+                    position: absolute;
+                    bottom: 0;
+                    right: 0;
+                    border-radius: 10px;
+                    margin: 10px;
+                    box-shadow: 0px 0px 7px black;
+                    video{
+                        border-radius: 10px;
+                    }
+                }
+                .local-share > video{
+                    object-fit: cover;
+                    border-radius: 10px;
+                }
+            }
+            .video-container{
+                height: 100%;
+                padding: 10px;
+            }
+            .remote-container{
+                height: 200px;
+                width: 100%;
+                overflow-x: auto;
+            }
+        }
+        .chat-container{
+            display: flex;
+            justify-content: center;
+            flex-direction: column;
+            align-items: center;
+            width: 20%;
+            background-color: lightgray;
+            margin: 10px 10px 10px 0;
+            border-radius: 10px;
+        }
+    }
+    .controls-div{
+        width: 100%;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: black;
+        position: relative;
+        bottom: 0;
+        .copy-meeting{
+            border: 1px solid  rgb(228, 233, 242);
+            padding: 10px;
+            color: rgb(228, 233, 242);
+            font-size: 14px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        .leave-btn{
+            cursor: pointer;
+            margin: 0px 0.625rem;
+            background-color: #bbb;
+            border-radius: 20px;
+            display: inline-block;
+            padding: 4px;
+        }
+    }
+}
