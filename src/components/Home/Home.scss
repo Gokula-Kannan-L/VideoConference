@@ -1,99 +1,42 @@
 .home-container{
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     justify-content: center;
     align-items: center;
     height: 100vh;
-    .main-container{
+    gap:20px;
+    .create-meeting{
+        gap: 10px;
         display: flex;
-        flex-direction: row;
-        justify-content: center;
-        align-items: center;
-        gap: 40px;
-        .create-meeting{
-            gap: 10px;
-            display: flex;
-            flex-direction: column;
-            .create-btn{
-                width: 14rem;
-                height: 3rem;
-                font-size: 18px;
-            }
-            .meeting-input{
-                width: 14rem;
-                height: 2.5rem;
-                font-size: 14px;
-                margin-bottom: 10px;
-                padding: 5px;
-            }
+        flex-direction: column;
+        .create-btn{
+            width: 14rem;
+            height: 3rem;
+            font-size: 18px;
         }
-        .join-meeting{
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            .meeting-input{
-                width: 14rem;
-                height: 2.5rem;
-                font-size: 14px;
-                margin-bottom: 10px;
-                padding: 5px;
-            }
-            .join-btn{
-                width: 14rem;
-                height: 3rem;
-                font-size: 18px;
-            }
-        }
-    }
-
-    .grid-container{
-        position: relative;
-        .local-video{
-            width: 350px;
-            height: 200px;
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            background-color: #343434;
-            z-index: 100;
-        }
-    }
-   
-    .controls-div{
-        width: 100%;
-        padding: 20px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        background-color: black;
-        .copy-meeting{
-            border: 1px solid  rgb(228, 233, 242);
-            padding: 10px;
-            color: rgb(228, 233, 242);
+        .meeting-input{
+            width: 14rem;
+            height: 2.5rem;
             font-size: 14px;
-            border-radius: 10px;
-            cursor: pointer;
-        }
-        .leave-btn{
-            cursor: pointer;
-            margin: 0px 0.625rem;
-            background-color: #bbb;
-            border-radius: 20px;
-            display: inline-block;
-            padding: 4px;
+            margin-bottom: 10px;
+            padding: 5px;
         }
     }
-    .video-grid-container > div{
-        display: block !important;
-    }
-    .video-grid-container{
-        .no-participants-div{
-            display: flex !important;
-            justify-content: center;
-            align-items: center;
-            color: rgb(228, 233, 242);
-            font-size: 20px;
-            font-weight: 500;
+    .join-meeting{
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        .meeting-input{
+            width: 14rem;
+            height: 2.5rem;
+            font-size: 14px;
+            margin-bottom: 10px;
+            padding: 5px;
+        }
+        .join-btn{
+            width: 14rem;
+            height: 3rem;
+            font-size: 18px;
         }
     }
 }
