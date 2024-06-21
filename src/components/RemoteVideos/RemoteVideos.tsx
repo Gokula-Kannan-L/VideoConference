@@ -1,13 +1,14 @@
-import React, { FunctionComponent, useEffect } from "react";
-import { RemoteVideo, useAttendeeStatus, useRemoteVideoTileState } from 'amazon-chime-sdk-component-library-react';
+import React, { Dispatch, FunctionComponent, SetStateAction, useEffect } from "react";
+import { ContentShare, RemoteVideo, useAttendeeStatus, useRemoteVideoTileState } from 'amazon-chime-sdk-component-library-react';
 import Avatar from '@mui/material/Avatar';
 import './RemoteVideos.scss';
 
 type props = {
     AttendeeId: string
+    setRemoteSharing: Dispatch<SetStateAction<boolean>>
 }
 
-const RemoteVideos:FunctionComponent<props> = ({AttendeeId}) => {
+const RemoteVideos:FunctionComponent<props> = ({AttendeeId, setRemoteSharing}) => {
 
     const {
         muted,
@@ -17,6 +18,13 @@ const RemoteVideos:FunctionComponent<props> = ({AttendeeId}) => {
       } = useAttendeeStatus(AttendeeId);
 
     const { tiles, attendeeIdToTileId } = useRemoteVideoTileState();
+
+    useEffect( () => {
+        console.log("remoteShare",sharingContent)
+        if(sharingContent){
+            setRemoteSharing(sharingContent);
+        }
+    }, [sharingContent])
 
     return(
         <>
